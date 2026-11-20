@@ -7,7 +7,7 @@
   <!-- Metatags PWA para experiência nativa no iPhone Safari -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Diário da Laís" />
+  <meta name="apple-mobile-web-app-title" content="Homeschooling da Laís" />
   <meta name="theme-color" content="#FAF8F5" />
   <title>Diário de Estudos da Laís</title>
 
@@ -148,7 +148,7 @@
       <div class="min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <h1 class="text-lg font-extrabold tracking-tight text-slate-900 truncate">
-            Diário da Laís
+            Homeschooling da Laís
           </h1>
           <span
             id="sync-status-pill"
@@ -205,12 +205,12 @@
         <button type="button" onclick="dismissAlertBanner()" class="text-rose-500 font-bold px-1.5">✕</button>
       </div>
       <p class="leading-relaxed">
-        Não foi possível ler/gravar no banco <strong>diario-lais</strong>. Certifique-se de que você ativou o banco de dados:
+        Não foi possível ler/gravar no banco <strong>diario-lais</strong>. Certifique-se de que as regras de segurança do Firestore estão ativas para o projeto:
       </p>
       <ol class="list-decimal list-inside space-y-1 text-rose-800/90 font-medium">
         <li>Abra <strong>console.firebase.google.com</strong> → projeto <strong>diario-lais</strong>.</li>
-        <li>Vá em <strong>Criação → Firestore Database → Criar banco de dados</strong>.</li>
-        <li>Escolha iniciar em <strong>Modo de teste</strong> e clique em <strong>Ativar</strong>.</li>
+        <li>Vá em <strong>Firestore Database → Regras</strong>.</li>
+        <li>Garanta permissão de leitura/escrita em <strong>families/{familyId}/{document=**}</strong>.</li>
       </ol>
       <div class="pt-1">
         <button
@@ -602,6 +602,20 @@
           </div>
         </div>
 
+        <!-- NOVO: Distribuição de Tempo entre Pai e Mãe (Diário / Semanal / Mensal) -->
+        <div class="print-card bg-white rounded-3xl p-4 shadow-xs border border-stone-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Tempo com Pai e Mãe (%)
+            </h3>
+            <span id="rep-parents-sessions-count" class="text-[11px] font-bold text-slate-400">0 sessões</span>
+          </div>
+
+          <div id="rep-parent-breakdown" class="space-y-3">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+
         <!-- Metas Semanais por Matéria (Aparece exclusivamente no modo Semanal) -->
         <div id="rep-weekly-goals-card" class="hidden print-card bg-white rounded-3xl p-4 shadow-xs border border-stone-200/80 space-y-3">
           <div class="flex items-center justify-between">
@@ -661,7 +675,182 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- ABA 4: MATÉRIAS (GERENCIAMENTO DINÂMICO, METAS E BACKUP JSON)       -->
+    <!-- ABA 4: LACUNAS (DIFICULDADES DETECTADAS E PRIORIDADES DE FOCO)      -->
+    <!-- =================================================================== -->
+    <section id="view-lacunas" class="hidden space-y-4 panel-enter">
+
+      <!-- Painel Analítico: Onde Focar Mais -->
+      <div class="bg-white rounded-3xl p-4 shadow-xs border border-stone-200/80 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">
+              🎯 Onde Focar Mais (Dificuldades Ativas)
+            </h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">
+              Concentração por matéria considerando registros ativos e reincidências
+            </p>
+          </div>
+          <span id="gaps-active-total-badge" class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 shrink-0">
+            0 ativas
+          </span>
+        </div>
+
+        <!-- Mini KPIs de Dificuldades -->
+        <div class="grid grid-cols-3 gap-2 pt-0.5">
+          <div class="rounded-2xl bg-rose-50/80 border border-rose-200/70 p-2.5 text-center">
+            <p class="text-[10px] font-bold uppercase text-rose-600">Prioridade Alta</p>
+            <p id="gaps-kpi-high" class="text-lg font-extrabold text-rose-700 mt-0.5">0</p>
+          </div>
+          <div class="rounded-2xl bg-amber-50/80 border border-amber-200/70 p-2.5 text-center">
+            <p class="text-[10px] font-bold uppercase text-amber-700">Ocorrências</p>
+            <p id="gaps-kpi-occurrences" class="text-lg font-extrabold text-amber-800 mt-0.5">0</p>
+          </div>
+          <div class="rounded-2xl bg-emerald-50/80 border border-emerald-200/70 p-2.5 text-center">
+            <p class="text-[10px] font-bold uppercase text-emerald-700">Superadas</p>
+            <p id="gaps-kpi-resolved" class="text-lg font-extrabold text-emerald-800 mt-0.5">0</p>
+          </div>
+        </div>
+
+        <!-- Ranking Horizontal por Matéria -->
+        <div id="gaps-priority-breakdown" class="space-y-2.5 pt-1">
+          <!-- Renderizado via JS -->
+        </div>
+      </div>
+
+      <!-- Formulário de Cadastro de Dificuldade -->
+      <div class="bg-white rounded-3xl p-4 shadow-xs border border-stone-200/80 space-y-3.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Registrar Dificuldade Detectada
+          </h2>
+          <span class="text-[11px] font-semibold text-slate-400">Sintonia Pai &amp; Mãe</span>
+        </div>
+
+        <!-- Seletor de Matéria -->
+        <div>
+          <span class="block text-[11px] font-bold text-slate-500 mb-1.5">Matéria relacionada</span>
+          <div id="gap-subjects-pills" class="flex flex-wrap gap-1.5">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+
+        <!-- Tópico / Descrição da Dificuldade -->
+        <div>
+          <label for="gap-topic-input" class="block text-[11px] font-bold text-slate-500 mb-1">
+            Qual dificuldade foi observada?
+          </label>
+          <input
+            type="text"
+            id="gap-topic-input"
+            maxlength="100"
+            placeholder="Ex.: Pronúncia do 'th', recorte em curvas, traçado da letra 'a'"
+            class="w-full bg-stone-50 border border-stone-200 rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          />
+        </div>
+
+        <!-- Nível de Prioridade / Intensidade -->
+        <div>
+          <span class="block text-[11px] font-bold text-slate-500 mb-1.5">Nível de atenção necessária</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              id="gap-sev-alta"
+              onclick="selectGapSeverity('alta')"
+              class="py-2.5 rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-700 font-extrabold text-xs transition-all"
+            >
+              🔴 Alta
+            </button>
+            <button
+              type="button"
+              id="gap-sev-media"
+              onclick="selectGapSeverity('media')"
+              class="py-2.5 rounded-xl border-2 border-stone-200 bg-white text-slate-600 font-extrabold text-xs transition-all"
+            >
+              🟡 Média
+            </button>
+            <button
+              type="button"
+              id="gap-sev-baixa"
+              onclick="selectGapSeverity('baixa')"
+              class="py-2.5 rounded-xl border-2 border-stone-200 bg-white text-slate-600 font-extrabold text-xs transition-all"
+            >
+              🟢 Leve
+            </button>
+          </div>
+        </div>
+
+        <!-- Estratégia ou Observação Opcional -->
+        <div>
+          <label for="gap-notes-input" class="sr-only">Observação ou estratégia de reforço</label>
+          <input
+            type="text"
+            id="gap-notes-input"
+            maxlength="180"
+            placeholder="Observação opcional (ex.: Treinar 5 min com cartões ilustrados)"
+            class="w-full bg-stone-50 border border-stone-200 rounded-2xl px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          />
+        </div>
+
+        <!-- Botão Salvar Dificuldade -->
+        <button
+          type="button"
+          id="btn-save-gap"
+          onclick="saveLearningGap()"
+          class="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-sm shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2"
+        >
+          <span>🎯</span>
+          <span id="btn-save-gap-text">Registrar Dificuldade (👨 Pai)</span>
+        </button>
+      </div>
+
+      <!-- Lista Filtrável de Dificuldades -->
+      <div class="space-y-3">
+        <div class="bg-stone-200/80 p-1 rounded-2xl grid grid-cols-3 gap-1">
+          <button
+            type="button"
+            id="gap-filter-ativa"
+            onclick="setGapStatusFilter('ativa')"
+            class="py-2 rounded-xl text-xs font-extrabold bg-white text-indigo-700 shadow-xs transition-all"
+          >
+            Em Foco
+          </button>
+          <button
+            type="button"
+            id="gap-filter-superada"
+            onclick="setGapStatusFilter('superada')"
+            class="py-2 rounded-xl text-xs font-extrabold text-slate-600 transition-all"
+          >
+            Superadas
+          </button>
+          <button
+            type="button"
+            id="gap-filter-todas"
+            onclick="setGapStatusFilter('todas')"
+            class="py-2 rounded-xl text-xs font-extrabold text-slate-600 transition-all"
+          >
+            Todas
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2.5 shadow-xs border border-stone-200/80 flex items-center gap-2">
+          <label for="gaps-subject-filter" class="text-xs font-bold text-slate-500 pl-1 shrink-0">Matéria:</label>
+          <select
+            id="gaps-subject-filter"
+            onchange="renderGapsView()"
+            class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
+          >
+            <option value="ALL">Todas as matérias</option>
+          </select>
+        </div>
+
+        <div id="gaps-list" class="space-y-2.5">
+          <!-- Renderizado via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ABA 5: MATÉRIAS (GERENCIAMENTO DINÂMICO, METAS E BACKUP JSON)       -->
     <!-- =================================================================== -->
     <section id="view-materias" class="hidden space-y-4 panel-enter">
 
@@ -739,7 +928,7 @@
         <div class="flex items-center justify-between gap-2">
           <div>
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Segurança dos Dados</h3>
-            <p class="text-xs text-slate-600 mt-0.5">Baixe uma cópia completa de todas as matérias e registros.</p>
+            <p class="text-xs text-slate-600 mt-0.5">Baixe uma cópia completa de matérias, registros e dificuldades.</p>
           </div>
           <button
             type="button"
@@ -759,19 +948,19 @@
 
   </main>
 
-  <!-- Barra de Navegação Inferior Fixa (4 Abas com Safe-Area iOS) -->
+  <!-- Barra de Navegação Inferior Fixa (5 Abas com Safe-Area iOS) -->
   <nav class="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-stone-200/90 safe-bottom-nav">
-    <div class="max-w-lg mx-auto grid grid-cols-4 pt-1.5 px-1">
+    <div class="max-w-lg mx-auto grid grid-cols-5 pt-1.5 px-1">
       <button
         type="button"
         id="nav-btn-registrar"
         onclick="switchTab('registrar')"
         class="flex flex-col items-center justify-center py-1.5 rounded-xl text-indigo-600 transition-colors"
       >
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
-        <span class="text-[11px] font-bold mt-0.5">Registrar</span>
+        <span class="text-[10px] font-bold mt-0.5 tracking-tight">Registrar</span>
       </button>
 
       <button
@@ -780,11 +969,11 @@
         onclick="switchTab('cronometro')"
         class="relative flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
       >
-        <span id="nav-timer-live-dot" class="hidden absolute top-1 right-6 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <span id="nav-timer-live-dot" class="hidden absolute top-1 right-4 w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="text-[11px] font-bold mt-0.5">Cronômetro</span>
+        <span class="text-[10px] font-bold mt-0.5 tracking-tight">Cronômetro</span>
       </button>
 
       <button
@@ -793,10 +982,23 @@
         onclick="switchTab('relatorios')"
         class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
       >
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
         </svg>
-        <span class="text-[11px] font-bold mt-0.5">Relatórios</span>
+        <span class="text-[10px] font-bold mt-0.5 tracking-tight">Relatórios</span>
+      </button>
+
+      <button
+        type="button"
+        id="nav-btn-lacunas"
+        onclick="switchTab('lacunas')"
+        class="relative flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        <span id="nav-gaps-badge" class="hidden absolute top-0.5 right-3.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center">0</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <span class="text-[10px] font-bold mt-0.5 tracking-tight">Lacunas</span>
       </button>
 
       <button
@@ -805,10 +1007,10 @@
         onclick="switchTab('materias')"
         class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
       >
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
         </svg>
-        <span class="text-[11px] font-bold mt-0.5">Matérias</span>
+        <span class="text-[10px] font-bold mt-0.5 tracking-tight">Matérias</span>
       </button>
     </div>
   </nav>
@@ -841,7 +1043,8 @@
       updateDoc,
       deleteDoc,
       onSnapshot,
-      serverTimestamp
+      serverTimestamp,
+      increment
     } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
     // =========================================================================
@@ -892,11 +1095,14 @@
       // Dados sincronizados do Firestore
       subjects: [],
       logs: [],
+      gaps: [],
       subjectsLoaded: false,
       logsLoaded: false,
+      gapsLoaded: false,
       seededFamilies: {},
       unsubSubjects: null,
       unsubLogs: null,
+      unsubGaps: null,
       alertDismissed: false,
 
       // Aba Registrar
@@ -915,6 +1121,11 @@
       reportSubView: 'stats', // 'stats' | 'notes'
       reportMode: 'diario', // 'diario' | 'semanal' | 'mensal'
       reportAnchorDate: new Date(),
+
+      // Aba Lacunas (Dificuldades detectadas)
+      gapSelectedSubjectId: 'subj_ingles',
+      gapSelectedSeverity: 'alta', // 'alta' | 'media' | 'baixa'
+      gapStatusFilter: 'ativa', // 'ativa' | 'superada' | 'todas'
 
       // Aba Matérias
       newSubjEmoji: EMOJI_CHOICES[0],
@@ -1007,23 +1218,31 @@
       connectFirestoreListeners();
     };
 
+    function checkAllLoaded() {
+      if (state.subjectsLoaded && state.logsLoaded && state.gapsLoaded) {
+        setConnectionStatus('connected');
+      }
+    }
+
     function connectFirestoreListeners() {
       if (state.unsubSubjects) state.unsubSubjects();
       if (state.unsubLogs) state.unsubLogs();
+      if (state.unsubGaps) state.unsubGaps();
 
       state.subjectsLoaded = false;
       state.logsLoaded = false;
+      state.gapsLoaded = false;
       setConnectionStatus('connecting');
 
       const familyCode = state.familyCode;
       const subjectsCol = collection(db, 'families', familyCode, 'subjects');
       const logsCol = collection(db, 'families', familyCode, 'logs');
+      const gapsCol = collection(db, 'families', familyCode, 'gaps');
 
       // Listener em tempo real das Matérias
       state.unsubSubjects = onSnapshot(
         subjectsCol,
         async (snapshot) => {
-          // Se a coleção estiver vazia, cria automaticamente as 6 matérias iniciais com IDs determinísticos
           if (snapshot.empty && !state.seededFamilies[familyCode]) {
             state.seededFamilies[familyCode] = true;
             try {
@@ -1056,10 +1275,7 @@
           state.subjects = items;
           state.subjectsLoaded = true;
           ensureValidSelectedSubjects();
-
-          if (state.logsLoaded) {
-            setConnectionStatus('connected');
-          }
+          checkAllLoaded();
           renderAll();
         },
         (error) => {
@@ -1086,7 +1302,6 @@
             });
           });
 
-          // Ordena do mais recente para o mais antigo
           items.sort((a, b) => {
             if (b.date !== a.date) return b.date.localeCompare(a.date);
             return b._createdMs - a._createdMs;
@@ -1094,14 +1309,60 @@
 
           state.logs = items;
           state.logsLoaded = true;
-
-          if (state.subjectsLoaded) {
-            setConnectionStatus('connected');
-          }
+          checkAllLoaded();
           renderAll();
         },
         (error) => {
           console.error('Firestore logs listener error:', error);
+          setConnectionStatus('error');
+        }
+      );
+
+      // Listener em tempo real das Dificuldades / Lacunas de Aprendizado
+      state.unsubGaps = onSnapshot(
+        gapsCol,
+        (snapshot) => {
+          const sevWeight = { alta: 3, media: 2, baixa: 1 };
+          const items = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const createdMs =
+              data.createdAt && typeof data.createdAt.toMillis === 'function'
+                ? data.createdAt.toMillis()
+                : Date.now();
+            const updatedMs =
+              data.updatedAt && typeof data.updatedAt.toMillis === 'function'
+                ? data.updatedAt.toMillis()
+                : createdMs;
+            items.push({
+              id: docSnap.id,
+              status: 'ativa',
+              severity: 'media',
+              occurrences: 1,
+              ...data,
+              _createdMs: createdMs,
+              _updatedMs: updatedMs,
+            });
+          });
+
+          // Ordena: Ativas primeiro -> Maior prioridade -> Mais ocorrências -> Mais recente
+          items.sort((a, b) => {
+            if (a.status !== b.status) return a.status === 'ativa' ? -1 : 1;
+            const swDiff = (sevWeight[b.severity] || 2) - (sevWeight[a.severity] || 2);
+            if (swDiff !== 0) return swDiff;
+            const occDiff = (Number(b.occurrences) || 1) - (Number(a.occurrences) || 1);
+            if (occDiff !== 0) return occDiff;
+            return b._updatedMs - a._updatedMs;
+          });
+
+          state.gaps = items;
+          state.gapsLoaded = true;
+          updateNavGapsBadge();
+          checkAllLoaded();
+          renderAll();
+        },
+        (error) => {
+          console.error('Firestore gaps listener error:', error);
           setConnectionStatus('error');
         }
       );
@@ -1112,6 +1373,7 @@
       if (activeSubjects.length === 0) {
         state.regSelectedSubjectId = null;
         state.timerSubjectId = null;
+        state.gapSelectedSubjectId = null;
         return;
       }
       if (!activeSubjects.some((s) => s.id === state.regSelectedSubjectId)) {
@@ -1119,6 +1381,9 @@
       }
       if (!activeSubjects.some((s) => s.id === state.timerSubjectId)) {
         state.timerSubjectId = activeSubjects[0].id;
+      }
+      if (!activeSubjects.some((s) => s.id === state.gapSelectedSubjectId)) {
+        state.gapSelectedSubjectId = activeSubjects[0].id;
       }
     }
 
@@ -1145,6 +1410,10 @@
 
       const badge = state.profile === 'Pai' ? '👨 Pai' : '👩 Mãe';
       document.getElementById('btn-save-study-text').textContent = `Salvar Estudo (${badge})`;
+      const gapBtnText = document.getElementById('btn-save-gap-text');
+      if (gapBtnText) {
+        gapBtnText.textContent = `Registrar Dificuldade (${badge})`;
+      }
 
       if (showFeedback) {
         showToast(`Aparelho configurado como ${badge}`, state.profile === 'Pai' ? '👨' : '👩');
@@ -1156,7 +1425,7 @@
         title: 'Código da Família Compartilhado',
         bodyHtml: `
           <p class="text-xs text-slate-500 leading-relaxed">
-            Digite o <strong>mesmo código</strong> no iPhone do Pai e no iPhone da Mãe para que ambos compartilhem e sincronizem os estudos da Laís em tempo real.
+            Digite o <strong>mesmo código</strong> no iPhone do Pai e no iPhone da Mãe para que ambos compartilhem e sincronizem os estudos e dificuldades da Laís em tempo real.
           </p>
           <div>
             <label for="input-family-code" class="block text-xs font-bold text-slate-700 mb-1">Código da Família</label>
@@ -1199,7 +1468,7 @@
 
     window.switchTab = function (tabName) {
       state.activeTab = tabName;
-      const allTabs = ['registrar', 'cronometro', 'relatorios', 'materias'];
+      const allTabs = ['registrar', 'cronometro', 'relatorios', 'lacunas', 'materias'];
       allTabs.forEach((t) => {
         const section = document.getElementById(`view-${t}`);
         const navBtn = document.getElementById(`nav-btn-${t}`);
@@ -1216,6 +1485,8 @@
 
       if (tabName === 'relatorios') {
         renderReports();
+      } else if (tabName === 'lacunas') {
+        renderGapsView();
       }
     };
 
@@ -1655,7 +1926,7 @@
     }
 
     // =========================================================================
-    // 9. ABA 3: RELATÓRIOS (DIÁRIO, SEMANAL, MENSAL, METAS, CADERNO E PDF)
+    // 9. ABA 3: RELATÓRIOS (DIÁRIO, SEMANAL, MENSAL, PAI VS MÃE, METAS E PDF)
     // =========================================================================
     window.setReportSubView = function (sub) {
       state.reportSubView = sub;
@@ -1809,6 +2080,9 @@
       // Renderiza Gráfico de Barras Diário (CSS/SVG puro) para Semanal e Mensal
       renderPureCssDailyBarChart(periodLogs, weekMonday);
 
+      // Renderiza Comparativo Pai vs. Mãe (Diário / Semanal / Mensal)
+      renderParentHorizontalBreakdown(periodLogs, totalMins);
+
       // Renderiza Metas Semanais (apenas no modo Semanal)
       renderWeeklyGoalsProgress(periodLogs);
 
@@ -1886,7 +2160,6 @@
           </div>
         `;
       } else {
-        // Gráfico SVG responsivo para os 28–31 dias do mês
         const width = 340;
         const height = 110;
         const barGap = 2;
@@ -1916,6 +2189,98 @@
           </svg>
         `;
       }
+    }
+
+    function renderParentHorizontalBreakdown(periodLogs, totalMins) {
+      const container = document.getElementById('rep-parent-breakdown');
+      const countBadge = document.getElementById('rep-parents-sessions-count');
+      countBadge.textContent = `${periodLogs.length} ${periodLogs.length === 1 ? 'sessão' : 'sessões'}`;
+
+      if (totalMins <= 0 || periodLogs.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Nenhum estudo registrado neste período.</p>`;
+        return;
+      }
+
+      let paiMins = 0;
+      let paiCount = 0;
+      let maeMins = 0;
+      let maeCount = 0;
+
+      periodLogs.forEach((l) => {
+        const mins = Number(l.minutes) || 0;
+        if (l.recordedBy === 'Mãe') {
+          maeMins += mins;
+          maeCount++;
+        } else {
+          paiMins += mins;
+          paiCount++;
+        }
+      });
+
+      const paiPct = Math.round((paiMins / totalMins) * 100);
+      const maePct = Math.max(0, 100 - paiPct);
+
+      const rows = [
+        {
+          label: 'Pai',
+          icon: '👨',
+          minutes: paiMins,
+          sessions: paiCount,
+          pct: paiPct,
+          color: '#4F46E5',
+        },
+        {
+          label: 'Mãe',
+          icon: '👩',
+          minutes: maeMins,
+          sessions: maeCount,
+          pct: maePct,
+          color: '#EC4899',
+        },
+      ].sort((a, b) => b.minutes - a.minutes);
+
+      container.innerHTML = `
+        <!-- Barra proporcional combinada Pai vs. Mãe -->
+        <div class="w-full h-3 bg-stone-100 rounded-full overflow-hidden flex gap-0.5">
+          ${
+            paiMins > 0
+              ? `<div class="h-full transition-all duration-300" style="width: ${paiPct}%; background-color: #4F46E5;" title="Pai: ${paiPct}%"></div>`
+              : ''
+          }
+          ${
+            maeMins > 0
+              ? `<div class="h-full transition-all duration-300" style="width: ${maePct}%; background-color: #EC4899;" title="Mãe: ${maePct}%"></div>`
+              : ''
+          }
+        </div>
+
+        <div class="space-y-3 pt-1">
+          ${rows
+            .map(
+              (item) => `
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between gap-2 text-xs">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span>${item.icon}</span>
+                    <span class="font-extrabold text-slate-800">${item.label}</span>
+                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-stone-100 text-slate-500">
+                      ${item.sessions} ${item.sessions === 1 ? 'sessão' : 'sessões'}
+                    </span>
+                  </div>
+                  <div class="shrink-0">
+                    <span class="font-extrabold text-slate-900">${item.minutes} min</span>
+                    <span class="text-slate-400 font-semibold ml-1">(${item.pct}%)</span>
+                  </div>
+                </div>
+                <div class="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300" style="width: ${item.pct}%; background-color: ${item.color};"></div>
+                </div>
+              </div>
+            `
+            )
+            .join('')}
+        </div>
+      `;
     }
 
     function renderWeeklyGoalsProgress(periodLogs) {
@@ -2015,7 +2380,6 @@
       const filterSelect = document.getElementById('notes-subject-filter');
       const currentFilter = filterSelect.value || 'ALL';
 
-      // Popula opções do filtro mantendo seleção atual
       const optionsHtml = [`<option value="ALL">Todas as matérias</option>`]
         .concat(
           state.subjects.map(
@@ -2075,7 +2439,6 @@
           .join('');
       }
 
-      // Popula também a seção de notas na impressão PDF
       const printNotesEl = document.getElementById('print-notes-list');
       if (logsWithNotes.length === 0) {
         printNotesEl.innerHTML = `<p class="py-2 text-slate-400">Sem observações adicionais neste período.</p>`;
@@ -2096,7 +2459,399 @@
     }
 
     // =========================================================================
-    // 10. ABA 4: MATÉRIAS (ADICIONAR, EDITAR META, ARQUIVAR, EXCLUIR E BACKUP)
+    // 10. ABA 4: LACUNAS (DIFICULDADES DETECTADAS E ONDE FOCAR MAIS)
+    // =========================================================================
+    function updateNavGapsBadge() {
+      const badge = document.getElementById('nav-gaps-badge');
+      if (!badge) return;
+      const activeCount = state.gaps.filter((g) => g.status !== 'superada').length;
+      if (activeCount > 0) {
+        badge.textContent = activeCount > 99 ? '99+' : String(activeCount);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    window.selectGapSubject = function (subjectId) {
+      state.gapSelectedSubjectId = subjectId;
+      renderGapSubjectPills();
+    };
+
+    window.selectGapSeverity = function (sev) {
+      state.gapSelectedSeverity = sev;
+      const styles = {
+        alta: {
+          active: 'py-2.5 rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-700 font-extrabold text-xs transition-all',
+          inactive: 'py-2.5 rounded-xl border-2 border-stone-200 bg-white text-slate-600 font-extrabold text-xs transition-all',
+        },
+        media: {
+          active: 'py-2.5 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-800 font-extrabold text-xs transition-all',
+          inactive: 'py-2.5 rounded-xl border-2 border-stone-200 bg-white text-slate-600 font-extrabold text-xs transition-all',
+        },
+        baixa: {
+          active: 'py-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 font-extrabold text-xs transition-all',
+          inactive: 'py-2.5 rounded-xl border-2 border-stone-200 bg-white text-slate-600 font-extrabold text-xs transition-all',
+        },
+      };
+
+      ['alta', 'media', 'baixa'].forEach((key) => {
+        const btn = document.getElementById(`gap-sev-${key}`);
+        if (btn) btn.className = key === sev ? styles[key].active : styles[key].inactive;
+      });
+    };
+
+    window.setGapStatusFilter = function (filter) {
+      state.gapStatusFilter = filter;
+      ['ativa', 'superada', 'todas'].forEach((f) => {
+        const btn = document.getElementById(`gap-filter-${f}`);
+        if (!btn) return;
+        btn.className =
+          f === filter
+            ? 'py-2 rounded-xl text-xs font-extrabold bg-white text-indigo-700 shadow-xs transition-all'
+            : 'py-2 rounded-xl text-xs font-extrabold text-slate-600 transition-all';
+      });
+      renderGapsView();
+    };
+
+    window.saveLearningGap = async function () {
+      const subject = state.subjects.find((s) => s.id === state.gapSelectedSubjectId);
+      if (!subject) {
+        showToast('Selecione uma matéria antes de registrar.', '⚠️');
+        return;
+      }
+
+      const topicInput = document.getElementById('gap-topic-input');
+      const notesInput = document.getElementById('gap-notes-input');
+      const topic = topicInput.value.trim();
+      const notes = notesInput.value.trim();
+
+      if (!topic) {
+        showToast('Descreva a dificuldade observada.', '⚠️');
+        return;
+      }
+
+      const saveBtn = document.getElementById('btn-save-gap');
+      saveBtn.disabled = true;
+
+      try {
+        const gapsCol = collection(db, 'families', state.familyCode, 'gaps');
+        await addDoc(gapsCol, {
+          subjectId: subject.id,
+          topic,
+          severity: state.gapSelectedSeverity,
+          notes,
+          status: 'ativa',
+          occurrences: 1,
+          date: getLocalYMD(new Date()),
+          recordedBy: state.profile,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        topicInput.value = '';
+        notesInput.value = '';
+        showToast(`Dificuldade em ${subject.name} registrada!`, '🎯');
+      } catch (err) {
+        console.error('Erro ao salvar dificuldade no Firestore:', err);
+        setConnectionStatus('error');
+        showToast('Não foi possível salvar. Verifique o Firestore.', '❌');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    };
+
+    window.incrementGapOccurrence = async function (gapId) {
+      try {
+        await updateDoc(doc(db, 'families', state.familyCode, 'gaps', gapId), {
+          occurrences: increment(1),
+          updatedAt: serverTimestamp(),
+        });
+        showToast('Reincidência registrada (+1)!', '📌');
+      } catch (err) {
+        console.error('Erro ao incrementar ocorrência:', err);
+        showToast('Erro ao atualizar ocorrência.', '❌');
+      }
+    };
+
+    window.toggleGapStatus = async function (gapId, nextStatus) {
+      try {
+        await updateDoc(doc(db, 'families', state.familyCode, 'gaps', gapId), {
+          status: nextStatus,
+          updatedAt: serverTimestamp(),
+        });
+        showToast(
+          nextStatus === 'superada' ? 'Habilidade marcada como superada! 🌟' : 'Dificuldade reaberta para foco.',
+          nextStatus === 'superada' ? '🌟' : '🔄'
+        );
+      } catch (err) {
+        console.error('Erro ao atualizar status da dificuldade:', err);
+        showToast('Erro ao atualizar status.', '❌');
+      }
+    };
+
+    window.confirmDeleteGap = function (gapId) {
+      const gap = state.gaps.find((g) => g.id === gapId);
+      if (!gap) return;
+
+      openModal({
+        title: 'Excluir registro de dificuldade?',
+        bodyHtml: `<p>Deseja remover permanentemente <strong>"${escapeHtml(gap.topic)}"</strong>?</p>`,
+        actions: [
+          {
+            label: 'Cancelar',
+            className: 'px-4 py-2.5 rounded-xl text-xs font-bold bg-stone-100 text-slate-700',
+          },
+          {
+            label: 'Excluir',
+            className: 'px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white',
+            onClick: async () => {
+              try {
+                await deleteDoc(doc(db, 'families', state.familyCode, 'gaps', gapId));
+                showToast('Registro removido.', '🗑️');
+              } catch (err) {
+                console.error('Erro ao excluir dificuldade:', err);
+                showToast('Erro ao excluir registro.', '❌');
+              }
+            },
+          },
+        ],
+      });
+    };
+
+    function renderGapSubjectPills() {
+      const container = document.getElementById('gap-subjects-pills');
+      if (!container) return;
+      const activeSubjects = state.subjects.filter((s) => s.active !== false);
+
+      if (activeSubjects.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400">Nenhuma matéria ativa.</p>`;
+        return;
+      }
+
+      container.innerHTML = activeSubjects
+        .map((s) => {
+          const selected = s.id === state.gapSelectedSubjectId;
+          return `
+            <button
+              type="button"
+              onclick="selectGapSubject('${s.id}')"
+              style="border-color: ${selected ? s.color : '#E7E5E4'}; background-color: ${selected ? s.color + '18' : '#FFFFFF'};"
+              class="px-2.5 py-1.5 rounded-xl border-2 text-xs font-extrabold text-slate-800 flex items-center gap-1 transition-all active:scale-95"
+            >
+              <span>${escapeHtml(s.icon || '📘')}</span>
+              <span>${escapeHtml(s.name)}</span>
+            </button>
+          `;
+        })
+        .join('');
+    }
+
+    window.renderGapsView = function () {
+      renderGapSubjectPills();
+
+      const activeGaps = state.gaps.filter((g) => g.status !== 'superada');
+      const resolvedGaps = state.gaps.filter((g) => g.status === 'superada');
+      const highPriorityCount = activeGaps.filter((g) => g.severity === 'alta').length;
+      const totalOccurrences = activeGaps.reduce((sum, g) => sum + (Number(g.occurrences) || 1), 0);
+
+      document.getElementById('gaps-active-total-badge').textContent = `${activeGaps.length} ${activeGaps.length === 1 ? 'ativa' : 'ativas'}`;
+      document.getElementById('gaps-kpi-high').textContent = String(highPriorityCount);
+      document.getElementById('gaps-kpi-occurrences').textContent = String(totalOccurrences);
+      document.getElementById('gaps-kpi-resolved').textContent = String(resolvedGaps.length);
+
+      // Ranking de matérias onde focar mais (baseado nas dificuldades ativas e suas ocorrências)
+      const priorityContainer = document.getElementById('gaps-priority-breakdown');
+      if (activeGaps.length === 0) {
+        priorityContainer.innerHTML = `
+          <p class="text-xs text-slate-400 text-center py-3">
+            Nenhuma dificuldade ativa cadastrada. Excelente progresso!
+          </p>
+        `;
+      } else {
+        const subjectMap = new Map();
+        activeGaps.forEach((g) => {
+          const subj = state.subjects.find((s) => s.id === g.subjectId);
+          if (!subjectMap.has(g.subjectId)) {
+            subjectMap.set(g.subjectId, {
+              id: g.subjectId,
+              name: subj ? subj.name : 'Matéria arquivada',
+              icon: subj ? subj.icon : '📘',
+              color: subj ? subj.color : '#64748B',
+              topicsCount: 0,
+              occurrencesSum: 0,
+            });
+          }
+          const entry = subjectMap.get(g.subjectId);
+          entry.topicsCount += 1;
+          entry.occurrencesSum += Number(g.occurrences) || 1;
+        });
+
+        const ranked = Array.from(subjectMap.values()).sort((a, b) => b.occurrencesSum - a.occurrencesSum);
+
+        priorityContainer.innerHTML = ranked
+          .map((item) => {
+            const pct = totalOccurrences > 0 ? Math.round((item.occurrencesSum / totalOccurrences) * 100) : 0;
+            return `
+              <div class="space-y-1">
+                <div class="flex items-center justify-between gap-2 text-xs">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span>${escapeHtml(item.icon)}</span>
+                    <span class="font-extrabold text-slate-800 truncate">${escapeHtml(item.name)}</span>
+                  </div>
+                  <div class="shrink-0 text-[11px]">
+                    <span class="font-extrabold text-slate-900">${item.topicsCount} ${item.topicsCount === 1 ? 'ponto' : 'pontos'}</span>
+                    <span class="text-slate-500 font-semibold">(${item.occurrencesSum}x · ${pct}%)</span>
+                  </div>
+                </div>
+                <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300" style="width: ${pct}%; background-color: ${item.color};"></div>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+      }
+
+      // Atualiza filtro de matéria na lista
+      const filterSelect = document.getElementById('gaps-subject-filter');
+      const currentSubjFilter = filterSelect.value || 'ALL';
+      filterSelect.innerHTML = [`<option value="ALL">Todas as matérias</option>`]
+        .concat(
+          state.subjects.map(
+            (s) =>
+              `<option value="${s.id}" ${s.id === currentSubjFilter ? 'selected' : ''}>${escapeHtml(s.icon)} ${escapeHtml(s.name)}</option>`
+          )
+        )
+        .join('');
+
+      // Filtra lista exibida
+      let filtered = state.gaps;
+      if (state.gapStatusFilter === 'ativa') {
+        filtered = filtered.filter((g) => g.status !== 'superada');
+      } else if (state.gapStatusFilter === 'superada') {
+        filtered = filtered.filter((g) => g.status === 'superada');
+      }
+
+      if (currentSubjFilter !== 'ALL') {
+        filtered = filtered.filter((g) => g.subjectId === currentSubjFilter);
+      }
+
+      const listEl = document.getElementById('gaps-list');
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="bg-white rounded-3xl p-6 border border-dashed border-stone-300 text-center">
+            <p class="text-xs font-semibold text-slate-500">
+              Nenhum registro encontrado neste filtro.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const sevMeta = {
+        alta: { label: '🔴 Alta', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+        media: { label: '🟡 Média', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+        baixa: { label: '🟢 Leve', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      };
+
+      listEl.innerHTML = filtered
+        .map((gap) => {
+          const subj = state.subjects.find((s) => s.id === gap.subjectId);
+          const subjName = subj ? subj.name : 'Matéria arquivada';
+          const subjIcon = subj ? subj.icon : '📘';
+          const subjColor = subj ? subj.color : '#64748B';
+          const isResolved = gap.status === 'superada';
+          const sev = sevMeta[gap.severity] || sevMeta.media;
+          const occ = Number(gap.occurrences) || 1;
+          const dateLabel = gap.date ? parseLocalYMD(gap.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '';
+
+          return `
+            <div class="bg-white rounded-2xl p-4 shadow-xs border ${
+              isResolved ? 'border-stone-200/70 opacity-75' : 'border-stone-200/90'
+            } space-y-2.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    class="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-lg"
+                    style="background-color: ${subjColor}18; color: ${subjColor};"
+                  >
+                    <span>${escapeHtml(subjIcon)}</span>
+                    <span>${escapeHtml(subjName)}</span>
+                  </span>
+
+                  ${
+                    isResolved
+                      ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">🌟 Superada</span>`
+                      : `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${sev.badgeClass}">${sev.label}</span>`
+                  }
+
+                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    ${occ}x observada
+                  </span>
+                </div>
+
+                <span class="text-[10px] font-semibold text-slate-400 shrink-0">
+                  ${gap.recordedBy === 'Mãe' ? '👩 Mãe' : '👨 Pai'}${dateLabel ? ` · ${dateLabel}` : ''}
+                </span>
+              </div>
+
+              <div>
+                <p class="text-sm font-extrabold text-slate-900 ${isResolved ? 'line-through text-slate-500' : ''}">
+                  ${escapeHtml(gap.topic)}
+                </p>
+                ${
+                  gap.notes
+                    ? `<p class="text-xs text-slate-500 mt-1 leading-relaxed break-words">${escapeHtml(gap.notes)}</p>`
+                    : ''
+                }
+              </div>
+
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-stone-100">
+                <div class="flex items-center gap-1.5">
+                  ${
+                    !isResolved
+                      ? `<button
+                          type="button"
+                          onclick="incrementGapOccurrence('${gap.id}')"
+                          class="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 text-[11px] font-extrabold transition-colors"
+                          title="Registrar que essa dificuldade apareceu novamente"
+                        >
+                          +1 Ocorrência
+                        </button>`
+                      : ''
+                  }
+
+                  <button
+                    type="button"
+                    onclick="toggleGapStatus('${gap.id}', '${isResolved ? 'ativa' : 'superada'}')"
+                    class="px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold transition-colors ${
+                      isResolved
+                        ? 'bg-stone-100 hover:bg-stone-200 text-slate-700'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80'
+                    }"
+                  >
+                    ${isResolved ? '↺ Reabrir' : '✓ Superada'}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="confirmDeleteGap('${gap.id}')"
+                  class="w-8 h-8 rounded-xl bg-stone-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors"
+                  aria-label="Excluir dificuldade"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    };
+
+    // =========================================================================
+    // 11. ABA 5: MATÉRIAS (ADICIONAR, EDITAR META, ARQUIVAR, EXCLUIR E BACKUP)
     // =========================================================================
     function renderNewSubjectPickers() {
       const emojiContainer = document.getElementById('new-subj-emoji-picker');
@@ -2217,13 +2972,15 @@
       if (!subj) return;
 
       const associatedLogsCount = state.logs.filter((l) => l.subjectId === subjectId).length;
-      if (associatedLogsCount > 0) {
+      const associatedGapsCount = state.gaps.filter((g) => g.subjectId === subjectId).length;
+
+      if (associatedLogsCount > 0 || associatedGapsCount > 0) {
         openModal({
           title: 'Não é possível excluir',
           bodyHtml: `
             <p>
               A matéria <strong>${escapeHtml(subj.icon)} ${escapeHtml(subj.name)}</strong> possui
-              <strong>${associatedLogsCount} registro(s)</strong> no histórico da Laís.
+              <strong>${associatedLogsCount} estudo(s)</strong> e <strong>${associatedGapsCount} dificuldade(s)</strong> no histórico da Laís.
             </p>
             <p class="text-xs text-slate-500">
               Para não distorcer os relatórios passados, use o botão <strong>Arquivar</strong> em vez de excluir.
@@ -2241,7 +2998,7 @@
 
       openModal({
         title: 'Excluir matéria?',
-        bodyHtml: `<p>Como ainda não há nenhum estudo lançado em <strong>${escapeHtml(subj.icon)} ${escapeHtml(subj.name)}</strong>, você pode excluí-la permanentemente.</p>`,
+        bodyHtml: `<p>Como ainda não há nenhum estudo ou dificuldade lançada em <strong>${escapeHtml(subj.icon)} ${escapeHtml(subj.name)}</strong>, você pode excluí-la permanentemente.</p>`,
         actions: [
           {
             label: 'Cancelar',
@@ -2275,6 +3032,7 @@
         .map((s) => {
           const isActive = s.active !== false;
           const logsCount = state.logs.filter((l) => l.subjectId === s.id).length;
+          const gapsCount = state.gaps.filter((g) => g.subjectId === s.id).length;
 
           return `
             <div class="p-3.5 rounded-2xl border ${
@@ -2290,7 +3048,7 @@
                   </span>
                   <div class="min-w-0">
                     <p class="text-sm font-extrabold text-slate-900 truncate">${escapeHtml(s.name)}</p>
-                    <p class="text-[11px] text-slate-400">${logsCount} registro(s) no diário</p>
+                    <p class="text-[11px] text-slate-400">${logsCount} registro(s) · ${gapsCount} lacuna(s)</p>
                   </div>
                 </div>
 
@@ -2308,7 +3066,7 @@
                   </button>
 
                   ${
-                    logsCount === 0
+                    logsCount === 0 && gapsCount === 0
                       ? `<button
                           type="button"
                           onclick="requestDeleteSubject('${s.id}')"
@@ -2353,6 +3111,7 @@
         familyCode: state.familyCode,
         subjects: state.subjects,
         logs: state.logs.map(({ _createdMs, ...cleanLog }) => cleanLog),
+        gaps: state.gaps.map(({ _createdMs, _updatedMs, ...cleanGap }) => cleanGap),
       };
 
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
@@ -2369,7 +3128,7 @@
     };
 
     // =========================================================================
-    // 11. TOAST, MODAL E RENDERIZAÇÃO GERAL
+    // 12. TOAST, MODAL E RENDERIZAÇÃO GERAL
     // =========================================================================
     let toastTimeout = null;
     function showToast(message, icon = '✅') {
@@ -2419,11 +3178,13 @@
       renderSubjectsManagementList();
       if (state.activeTab === 'relatorios') {
         renderReports();
+      } else if (state.activeTab === 'lacunas') {
+        renderGapsView();
       }
     }
 
     // =========================================================================
-    // 12. INICIALIZAÇÃO DO APLICATIVO
+    // 13. INICIALIZAÇÃO DO APLICATIVO
     // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('header-family-code').textContent = state.familyCode;
